@@ -10,14 +10,14 @@ Use of this information, code, or scripts provided is at your own risk. Readers 
 
 ## Description
 
-This is a simple "how to" guide for setting up a local MQTT broker, and testing the local TF6020 Json Data Interface. This example can then be expanded to remote brokers and remote clients.
+This is a simple "how to" guide for setting up a local MQTT broker, and testing the local TF6020 JSON Data Interface. This example can then be expanded to remote brokers and remote clients.
 
 > [!CAUTION]
-> This example will configure an unsecure connection. For production, you must configure authentication and encryption in your broker!
+> This example will configure an insecure connection. For production, you must configure authentication and encryption in your broker!
 
 ## SSH
 
-We will be connecting to the CX8290 using SSH. This allows us to use our Windows CMD window to issue commands directly to the Linux os.
+We will be connecting to the CX8290 using SSH. This allows us to use our Windows CMD window to issue commands directly to the Linux OS.
 
 ```
 ssh Administrator@<ip-address>
@@ -27,7 +27,7 @@ To connect, you will need to type in your password.
 
 ## 1. Install a local MQTT broker (mosquitto) and utilities on CX8290
 
-First we will install a location MQTT Broker and allow local incoming connections on port 1883.
+First we will install a local MQTT Broker and allow loopback-only connections on port 1883.
 
 1. Install mosquitto
 
@@ -45,7 +45,7 @@ First we will install a location MQTT Broker and allow local incoming connection
 
 3. Edit the file
 
-   Add the following content after any remote connections.
+   Add the following content.
 
    ```bash
    listener 1883 127.0.0.1
@@ -75,14 +75,15 @@ First we will install a location MQTT Broker and allow local incoming connection
    sudo nano /etc/TwinCAT/3.1/Target/StaticRoutes.xml
    ```
 
-   Add the following content after any remote connections. Remember, the topic is set to the topic we decided for the example. You can pick your own topic.
+   Add the following \<Json\> section inside \<RemoteConnections\>. Remember, the topic is set to the topic we decided for the example. You can pick your own topic.
 
    ```xml
    <?xml version="1.0" encoding="UTF-8"?>
-   <TcConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+   <TcConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2015/12/TcConfig">
        <RemoteConnections>
 
-           <!-- other remote connections may be already be here -->
+           <!-- other remote connections may already be here -->
 
            <!-- start of section to add -->
            <Json>
@@ -140,7 +141,7 @@ Send a request to TwinCAT.
   - 851: Default AmsPort for the first PLC runtime.
   - 1: An arbitrary ID for this request.
 
-```Bash
+```bash
 mosquitto_pub -t 'cx8290/req/851/1' -m '{"symbol":"MAIN.nCounter"}'
 ```
 
@@ -155,3 +156,23 @@ In Terminal 1, you should see:
 cx8290/req/851/1 {"symbol":"MAIN.nCounter"}
 cx8290/res/851/1 {"symbol":"MAIN.nCounter", "value": 123}
 ```
+
+## API Examples
+
+| Type                                                 | Request / Response               | Sample of the JSON payload                                                           |
+| ---------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ |
+| Reading a variable                                   | Request                          | `{"symbol":"MAIN.nCounter"}`                                                         |
+|                                                      | Response                         | `{"symbol":"MAIN.nCounter", "value": 123}`                                           |
+| Reading a variable and its data type                 | Request                          | `{"symbol":"MAIN.nCounter", "datatype": null}`                                       |
+|                                                      | Response                         | `{"symbol":"MAIN.nCounter", "value": 123, "datatype": "INT"}`                        |
+| Simultaneous reading of several variables            | Request                          | `[{"symbol":"MAIN.nCounter"}, {"symbol":"MAIN.nSecCounter"}]`                        |
+|                                                      | Response                         | `[{"symbol":"MAIN.nCounter","value":123}, {"symbol":"MAIN.nSecCounter","value":35}]` |
+| Reading the TwinCAT symbol info                      | Request                          | `{"symbols": null}`                                                                  |
+|                                                      | Response                         | _Complete symbol info_                                                               |
+| Writing a variable                                   | Request                          | `{"symbol":"MAIN.nCounter","value":123}`                                             |
+|                                                      | Response                         | `{"symbol":"MAIN.nCounter","value":123}`                                             |
+| Writing several variables                            | Request                          | `[{"symbol":"MAIN.nCounter","value":123}, {"symbol":"MAIN.nSecCounter","value":35}]` |
+|                                                      | Response                         | `[{"symbol":"MAIN.nCounter","value":123}, {"symbol":"MAIN.nSecCounter","value":35}]` |
+| Method calls (with optional input/output parameters) | Request                          | `{"symbol":"MAIN.fbTester#M_Add","parameter":{"intA":42,"intB":35}}`                 |
+|                                                      | Response                         | `{"symbol":"MAIN.fbTester#M_Add","value":77}`                                        |
+|                                                      | Response with additional outputs | `{"symbol":"MAIN.fbTester#M_Add","value":77,"parameter":{"intC":32,"intD":64}}`      |
